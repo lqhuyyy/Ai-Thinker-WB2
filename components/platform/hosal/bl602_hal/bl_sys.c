@@ -23,7 +23,11 @@ static char *RST_REASON_ARRAY[] = {
     "BL_RST_SOFTWARE_WATCHDOG",
     "BL_RST_SOFTWARE"
 };
+#ifndef PROJECT_HUNONIC_PM
+volatile bool sys_log_all_enable = true;
+#else
 volatile bool sys_log_all_enable = false;
+#endif
 
 BL_RST_REASON_E bl_sys_rstinfo_get(void)
 {
