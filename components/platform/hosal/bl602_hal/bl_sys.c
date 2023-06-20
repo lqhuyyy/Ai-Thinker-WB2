@@ -23,7 +23,7 @@ static char *RST_REASON_ARRAY[] = {
     "BL_RST_SOFTWARE_WATCHDOG",
     "BL_RST_SOFTWARE"
 };
-volatile bool sys_log_all_enable = true;
+volatile bool sys_log_all_enable = false;
 
 BL_RST_REASON_E bl_sys_rstinfo_get(void)
 {
