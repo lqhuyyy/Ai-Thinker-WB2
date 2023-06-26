@@ -298,6 +298,10 @@ void log_port_reset(void)
     cfg.gpioPin = 7;
     GLB_GPIO_Init(&cfg);
 }
+#ifdef PROJECT_HUNONIC_PM
+uint8_t g_btn_pres = 0;
+#include "hardware.h"
+#endif
 
 void bfl_main()
 {
@@ -307,20 +311,44 @@ void bfl_main()
  
 #ifdef SYS_REBOOT_LOG_DISENABLE
     /*Init UART In the first place*/
+#ifndef PROJECT_HUNONIC_PM
     log_port_reset();
 #endif
+#endif
 
-
+#ifndef PROJECT_HUNONIC_PM
     hosal_uart_init_only_tx(&uart_stdio);
     puts("Starting bl602 now....\r\n");
+#endif
 
+#ifdef PROJECT_HUNONIC_PM
+    hw_gpio_init();
+
+    if (gpio_get_level(BUTTON1) == 0) {
+        g_btn_pres = 1;
+        hw_led_stt_on();
+    }
+    extern void hun_i2c_init(void);
+    hun_i2c_init();
+    extern void hun_i2c_send_request_measure(void);
+    hun_i2c_send_request_measure();
+#endif
+
+#ifndef PROJECT_HUNONIC_PM
     _dump_boot_info();
+#endif
 
 #ifndef BL602_MATTER_SUPPORT
     vPortDefineHeapRegions(xHeapRegions);
 #endif
 
     system_early_init();
+
+#ifdef PROJECT_HUNONIC_PM
+    BL602_Delay_MS(15);
+    extern void check_need_wakeup(void);
+    check_need_wakeup();
+#endif
 
     puts("[OS] Starting aos_loop_proc task...\r\n");
     xTaskCreate(aos_loop_proc, (char*)"event_loop", 1024, NULL, 15, &aos_loop_proc_task);
