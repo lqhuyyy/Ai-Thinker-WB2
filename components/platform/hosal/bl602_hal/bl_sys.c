@@ -58,6 +58,11 @@ void bl_sys_rstinfo_init(void)
     bl_sys_rstinfo_set(BL_RST_SOFTWARE_WATCHDOG);
 }
 
+BL_RST_REASON_E bl_sys_rstinfo_get_hun(void)
+{
+    return s_rst_reason;
+}
+
 int bl_sys_rstinfo_getsting(char *info)
 {
     memcpy(info, (char *)RST_REASON_ARRAY[s_rst_reason], strlen(RST_REASON_ARRAY[s_rst_reason]));
