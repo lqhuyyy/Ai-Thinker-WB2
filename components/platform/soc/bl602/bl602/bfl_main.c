@@ -328,3 +328,8 @@ void bfl_main()
     puts("[OS] Starting OS Scheduler...\r\n");
     vTaskStartScheduler();
 }
+
+void bfl_reinit_tx_uart(void)
+{
+    hosal_uart_init_only_tx(&uart_stdio);
+}
