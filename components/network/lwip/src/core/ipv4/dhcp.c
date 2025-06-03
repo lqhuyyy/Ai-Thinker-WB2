@@ -117,15 +117,15 @@
 
 #define REBOOT_TRIES                2
 
-#if LWIP_DNS && LWIP_DHCP_MAX_DNS_SERVERS
-#if DNS_MAX_SERVERS > LWIP_DHCP_MAX_DNS_SERVERS
-#define LWIP_DHCP_PROVIDE_DNS_SERVERS LWIP_DHCP_MAX_DNS_SERVERS
-#else
-#define LWIP_DHCP_PROVIDE_DNS_SERVERS DNS_MAX_SERVERS
-#endif
-#else
+// #if LWIP_DNS && LWIP_DHCP_MAX_DNS_SERVERS
+// #if DNS_MAX_SERVERS > LWIP_DHCP_MAX_DNS_SERVERS
+// #define LWIP_DHCP_PROVIDE_DNS_SERVERS LWIP_DHCP_MAX_DNS_SERVERS
+// #else
+// #define LWIP_DHCP_PROVIDE_DNS_SERVERS DNS_MAX_SERVERS
+// #endif
+// #else
 #define LWIP_DHCP_PROVIDE_DNS_SERVERS 0
-#endif
+// #endif
 
 /** Option handling: options are parsed in dhcp_parse_reply
  * and saved in an array where other functions can load them from.
@@ -668,7 +668,7 @@ dhcp_handle_ack(struct netif *netif, struct dhcp_msg *msg_in)
   dhcp_set_ntp_servers(n, ntp_server_addrs);
 #endif /* LWIP_DHCP_GET_NTP_SRV */
 
-#if LWIP_DHCP_PROVIDE_DNS_SERVERS && 0
+#if LWIP_DHCP_PROVIDE_DNS_SERVERS
   /* DNS servers */
   for (n = 0; (n < LWIP_DHCP_PROVIDE_DNS_SERVERS) && dhcp_option_given(dhcp, DHCP_OPTION_IDX_DNS_SERVER + n); n++) {
     ip_addr_t dns_addr;
