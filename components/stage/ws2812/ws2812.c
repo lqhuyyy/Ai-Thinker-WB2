@@ -14,16 +14,23 @@
 #include "task.h"
 #include "blog.h"
 
+#if defined WS281X_IR_MODE
+#pragma message "ws2812 using IR mode"
+
+#include "ws281x_ir.h"
+#define _WS281X_FUNC_DEFINE(_func, ...) ws281x_ir_##_func(__VA_ARGS__)
+#elif defined WS281X_SPI_MODE
+#pragma message "ws2812 using SPI mode"
+
+#include "ws281x_spi.h"
+#define _WS281X_FUNC_DEFINE(_func, ...) ws281x_spi_##_func(__VA_ARGS__)
+
+#else
+#error "Please select a ws281x mode,CONFIG_WS2812_MODE=SPI_MODE or IR_MODE"
+
+#endif
+
 ws2812_strip_t *ws2812_strip_dev = NULL;
-// 初始化IR LED GPIO
-static void ir_led_gpio_init(void)
-{
-	GLB_GPIO_Type pin = IR_PIN_TX;
-
-	GLB_GPIO_Func_Init(GPIO_FUN_ANALOG, &pin, 1);
-	GLB_IR_LED_Driver_Enable();
-}
-
 void ws2812_init(ws2812_strip_t *ws2812_strip)
 {
 	if (ws2812_strip == NULL || ws2812_strip->led_count == 0)
@@ -31,49 +38,53 @@ void ws2812_init(ws2812_strip_t *ws2812_strip)
 		blog_error("ws2812_strip is NULL or led_count is 0");
 		return;
 	}
-	ir_led_gpio_init();
-	// led_wo_init();
-	IR_LEDInit(HBN_XCLK_CLK_RC32M, 1, 2, 8, 16, 16, 4);
-	vTaskDelay(pdMS_TO_TICKS(1)); // 等待初始化完成
-	ws2812_strip->dev = pvPortMalloc(sizeof(ws2812_dev_t) * ws2812_strip->led_count);
-	ws2812_strip->brightness = 0.5;
-	for (uint8_t i = 0; i < ws2812_strip->led_count; i++)
+	_WS281X_FUNC_DEFINE(init, ws2812_strip);
+
+	if (ws2812_strip->dev == NULL)
 	{
-		ws2812_strip->dev[i].index = i;
-		ws2812_strip->dev[i].brightness = &ws2812_strip->brightness;
-		ws2812_strip->dev[i].color.r = 0;
-		ws2812_strip->dev[i].color.g = 0;
-		ws2812_strip->dev[i].color.b = 0;
+		ws2812_strip->dev = pvPortMalloc(sizeof(ws2812_dev_t) * ws2812_strip->led_count);
+		ws2812_strip->brightness = 0.5;
+		for (uint8_t i = 0; i < ws2812_strip->led_count; i++)
+		{
+			ws2812_strip->dev[i].index = i;
+			ws2812_strip->dev[i].brightness = &ws2812_strip->brightness;
+			ws2812_strip->dev[i].color.r = 0;
+			ws2812_strip->dev[i].color.g = 0;
+			ws2812_strip->dev[i].color.b = 0;
+		}
 	}
-	ws2812_strip_dev = ws2812_strip;
+
+	if (ws2812_strip_dev == NULL)
+	{
+		ws2812_strip_dev = ws2812_strip;
+	}
 }
 /**
- * @brief 反转8位数据的位顺序,通过红外发送时需要将数据反转
+ * @brief 清空所有LED
  *
- * @param high_data
- * @return uint8_t
  */
-static uint8_t reverse_bits(uint8_t high_data)
+void ws2812_show_leds(void)
 {
-	uint8_t low_data = 0;
-	for (uint8_t i = 0; i < 8; i++)
-	{
-		low_data <<= 1;				 // 低位数据左移，腾出最低位
-		low_data |= (high_data & 1); // 取高位数据的最低位，放到低位数据的最低位
-		high_data >>= 1;			 // 高位数据右移，处理下一位
-	}
-	return low_data;
+	_WS281X_FUNC_DEFINE(show_leds);
 }
-// 设置单个灯珠颜色，带亮度控制
+/**
+ * @brief 设置单个LED的颜色
+ *
+ * @param index
+ * @param r
+ * @param g
+ * @param b
+ */
 void ws2812_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
-	if (index < ws2812_strip_dev->led_count)
-	{
-		ws2812_strip_dev->dev[index].color.r = (uint16_t)reverse_bits(r);
-		ws2812_strip_dev->dev[index].color.g = (uint16_t)reverse_bits(g);
-		ws2812_strip_dev->dev[index].color.b = (uint16_t)reverse_bits(b);
-	}
+	_WS281X_FUNC_DEFINE(set_pixel_color, index, r, g, b);
 }
+/**
+ * @brief 设置单个LED的亮度
+ *
+ * @param index
+ * @param brightness
+ */
 void ws2812_set_pixel_brightness(uint8_t index, float brightness)
 {
 	// 更新所有LED以应用新亮度
@@ -122,23 +133,11 @@ void ws2812_set_pixel_color_hsv(uint8_t index, uint8_t h, uint8_t s, uint8_t v)
 	color_t rgb = hsv_to_rgb(hsv);
 	ws2812_set_pixel_color(index, rgb.r, rgb.g, rgb.b);
 }
-// 将颜色缓冲区数据发送到WS2812
-void ws2812_show_leds(void)
-{
-	for (uint8_t i = 0; i < ws2812_strip_dev->led_count; i++)
-	{
-		uint32_t brg_color = (ws2812_strip_dev->dev[i].color.b << 16) | (ws2812_strip_dev->dev[i].color.r << 8) | ws2812_strip_dev->dev[i].color.g;
-		IR_SendCommand(0, brg_color);
-	}
-	vTaskDelay(pdMS_TO_TICKS(1)); // 等待初始化完成
-}
 
 // 设置灯珠数量
 void ws2812_set_led_count(uint8_t count)
 {
 	ws2812_strip_dev->led_count = count;
-
-	// ws2812_show_leds();
 }
 
 uint8_t ws2812_get_led_count(void)

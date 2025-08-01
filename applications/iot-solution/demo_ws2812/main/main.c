@@ -18,7 +18,7 @@
 
 #include "ws2812.h"
 #include "color_mode.h"
-
+#include "blog.h"
 color_t RED = {0xff, 0x00, 0x00};
 color_t GREEN = {0x00, 0xff, 0x00};
 color_t BLUE = {0x00, 0x00, 0xff};
@@ -29,6 +29,7 @@ color_t BLUE = {0x00, 0x00, 0xff};
 static ws2812_strip_t ws2812_strip = {
     .led_count = 46,
     .brightness = 0.05,
+    .pin = 12,
 };
 
 static void smoothcolorTransition_callbark(color_t color, void *arg)
@@ -41,12 +42,14 @@ void main(void)
 {
     bl_sys_init(); // 初始化系统
     ws2812_init(&ws2812_strip);
+    blog_info("ws2812 demo start");
     ws2812_set_all_pixels_color(0xFF, 0x00, 0x00, 0.5);
     vTaskDelay(pdMS_TO_TICKS(1000));
     ws2812_set_all_pixels_color(0x00, 0xFF, 0x00, 0.5);
     vTaskDelay(pdMS_TO_TICKS(1000));
     ws2812_set_all_pixels_color(0x00, 0x00, 0xFF, 0.5);
     vTaskDelay(pdMS_TO_TICKS(1000));
+
     while (1)
     {
         // 颜色渐变模式

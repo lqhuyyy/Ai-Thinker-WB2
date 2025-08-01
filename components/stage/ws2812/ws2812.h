@@ -11,14 +11,9 @@
 #ifndef __WS2812_H__
 #define __WS2812_H__
 
-#include <bl602_glb.h>
-#include <bl602_gpio.h>
-#include <bl602_ir.h>
 #include "stdint.h"
 #include "color_mode.h"
 #include "bl_timer.h"
-
-#define IR_PIN_TX GLB_GPIO_PIN_11
 
 typedef struct
 {
@@ -32,13 +27,30 @@ typedef struct
 	ws2812_dev_t *dev;
 	uint8_t led_count;
 	float brightness;
+	uint8_t pin;
 } ws2812_strip_t;
+
+extern ws2812_strip_t *ws2812_strip_dev;
 /**
  * @brief 初始化WS2812
  *
- * @param led_count 灯珠数量
+ * @param ws2812_strip
  */
 void ws2812_init(ws2812_strip_t *ws2812_strip);
+
+/**
+ * @brief 设置所有LED的颜色
+ *
+ * @param r
+ * @param g
+ * @param b
+ */
+void ws2812_set_all_pixels_color(uint8_t r, uint8_t g, uint8_t b, float brightness);
+/**
+ * @brief 显示LED颜色
+ *
+ */
+void ws2812_show_leds(void);
 /**
  * @brief 设置LED数量
  *
@@ -61,14 +73,7 @@ void ws2812_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
  * @param brightness 亮度
  */
 void ws2812_set_pixel_brightness(uint8_t index, float brightness);
-/**
- * @brief 设置所有LED的颜色
- *
- * @param r
- * @param g
- * @param b
- */
-void ws2812_set_all_pixels_color(uint8_t r, uint8_t g, uint8_t b, float brightness);
+
 /**
  * @brief 设置所有LED的亮度
  *
@@ -84,15 +89,12 @@ void ws2812_set_pixel_color_hsv(uint8_t index, uint8_t h, uint8_t s, uint8_t v);
  * @param brightness
  */
 void ws2812_set_global_brightness(float brightness);
-/**
- * @brief 显示LED颜色
- *
- */
-void ws2812_show_leds(void);
+
 /**
  * @brief 获取LED数量
  *
  * @return uint8_t
  */
 uint8_t ws2812_get_led_count(void);
+
 #endif // !__SPI_WS2812_H__
