@@ -14,7 +14,6 @@
 #include "stdint.h"
 #include "ws2812.h"
 #ifdef WS281X_SPI_MODE
-
 void ws281x_spi_init(ws2812_strip_t *ws2812_strip);
 void ws281x_spi_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b);
 void ws281x_spi_show_leds(void);
