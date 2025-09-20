@@ -55,6 +55,7 @@ static void inline ws281x_spi_dma_whait_txdone(void)
 {
 	while (spi_dma_txing)
 	{
+		blog_warn("spi_dma_txing\r\n");
 		;
 	}
 }
@@ -165,6 +166,7 @@ void ws281x_spi_init(ws2812_strip_t *ws2812_strip)
 	ws2812_strip_dev = ws2812_strip;
 	blog_info("ws2812 SPI Mode init success, led_count:%d, pin:%d", ws2812_strip->led_count, ws2812_strip->pin);
 }
+
 /**
  * @brief SPI发送数据
  *
@@ -173,26 +175,84 @@ void ws281x_spi_init(ws2812_strip_t *ws2812_strip)
  * @param g
  * @param b
  */
-void ws281x_spi_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+static void _ws281x_spi_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
 {
+	// 增加越界检查
+	if (index >= ws2812_strip_dev->led_count)
+	{
+		blog_error("LED index %d out of range (max %d)", index, ws2812_strip_dev->led_count);
+		return;
+	}
+
+	uint32_t base = index * 24; // 每个灯珠24字节（3色×8位）
+	// 确保不越界（base + 23 < 总长度）
+	if (base + 23 >= ws2812_strip_dev->led_count * 24)
+	{
+		blog_error("LED buffer overflow for index %d", index);
+		return;
+	}
+	// 正常设置颜色位（保持原逻辑）
 	for (int32_t i = 0; i < 8; i++)
 	{
-		led_buffer[index * 24 + i + 0] = ((g >> (8 - i)) & 0x01) ? LED_T1 : LED_T0;
+		led_buffer[base + i] = ((g >> (7 - i)) & 0x01) ? LED_T1 : LED_T0;
 	}
 	for (int32_t i = 0; i < 8; i++)
 	{
-		led_buffer[index * 24 + i + 8] = ((r >> (8 - i)) & 0x01) ? LED_T1 : LED_T0;
+		led_buffer[base + 8 + i] = ((r >> (7 - i)) & 0x01) ? LED_T1 : LED_T0;
 	}
 	for (int32_t i = 0; i < 8; i++)
 	{
-		led_buffer[index * 24 + i + 16] = ((b >> (8 - i)) & 0x01) ? LED_T1 : LED_T0;
+		led_buffer[base + 16 + i] = ((b >> (7 - i)) & 0x01) ? LED_T1 : LED_T0;
 	}
 }
+/**
+ * @brief
+ *
+ */
+void ws281x_spi_sync_all_leds(void)
+{
+	if (ws2812_strip_dev == NULL || led_buffer == NULL)
+		return;
+	// printf("RGB:");
+	for (uint8_t i = 0; i < ws2812_strip_dev->led_count; i++)
+	{
+		// 从dev数组同步颜色到led_buffer
+		uint8_t r = ws2812_strip_dev->dev[i].color.r;
+		uint8_t g = ws2812_strip_dev->dev[i].color.g;
+		uint8_t b = ws2812_strip_dev->dev[i].color.b;
+
+		// 复用现有函数更新缓冲区
+		// printf(" %02X ", r << 8 | g << 16 | b);
+		_ws281x_spi_set_pixel_color(i, r, g, b);
+	}
+	// printf("\r\n");
+}
+/**
+ * @brief 设置单个灯珠颜色
+ *
+ * @param index
+ * @param r
+ * @param g
+ * @param b
+ */
+void ws281x_spi_set_pixel_color(uint8_t index, uint8_t r, uint8_t g, uint8_t b)
+{
+	if (index >= ws2812_strip_dev->led_count)
+		return;
+	// 1. 更新dev数组中的颜色状态
+	ws2812_strip_dev->dev[index].color.r = r;
+	ws2812_strip_dev->dev[index].color.g = g;
+	ws2812_strip_dev->dev[index].color.b = b;
+}
+/**
+ * @brief 从dev数组同步所有灯珠颜色到led_buffer
+ */
 
 void ws281x_spi_show_leds(void)
 {
-
+	ws281x_spi_sync_all_leds();
 	ws281x_spi_dma_whait_txdone();
+	// blog_warn_hexdump("led_buffer", led_buffer, ws2812_strip_dev->led_count * 24);
 	if (led_buffer != NULL)
 		ws281x_spi_send_by_dma(led_buffer, ws2812_strip_dev->led_count * 24);
 }

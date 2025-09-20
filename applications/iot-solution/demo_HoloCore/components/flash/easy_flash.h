@@ -7,11 +7,12 @@
  *
  * @copyright Copyright (c) 2024
  *
-*/
+ */
 #ifndef EASY_FLASH_H
 #define EASY_FLASH_H
 
-typedef enum {
+typedef enum
+{
     FLASH_WIFI_SSID,
     FLASH_WIFI_PASSWORD,
     FLASH_WIFI_PMK,
@@ -26,25 +27,19 @@ typedef enum {
     FLASH_HA_MANUFACTURER,
     FLASH_HA_AC_TYPE,
     FLASH_HA_AC_GCODE,
-}flash_key_t;
+    FLASH_HA_RESET_NUM,
+} flash_key_t;
 
-bool flash_save_wifi_info(void* value);
-int flash_get_wifi_info(void* value);
-bool flash_save_mqtt_info(void* value);
-int flash_get_mqtt_info(void* value);
-bool flash_save_ha_device_msg(void* value);
-int flash_get_ha_device_msg(void* value);
-bool ef_del_key(const char* key);
-bool flash_set_ir_code(const char* data_name, char* ir_data, unsigned short int data_len);
-int  flash_get_ir_code(const char* data_name, char* ir_data, unsigned short int data_len);
+bool flash_save_wifi_info(void *value);
+int flash_get_wifi_info(void *value);
+bool flash_save_mqtt_info(void *value);
+int flash_get_mqtt_info(void *value);
+bool flash_save_ha_device_msg(void *value);
+int flash_get_ha_device_msg(void *value);
+bool ef_del_key(const char *key);
 bool flash_save_new_temp(float temperature);
 float flash_get_temperature(void);
-bool flash_save_new_ac_mode(uint8_t modes);
-int flash_get_ac_mode(void);
 
-bool flash_save_new_ac_type(int ac_type);
-int flash_get_ac_type(void);
-
-bool flash_save_new_ac_gcode(unsigned char* g_codec, int g_code_len);
-int flash_get_ac_gcode(unsigned char* g_codec);
+int flash_save_reset_count(int count);
+int flash_get_reset_count(void);
 #endif

@@ -91,9 +91,10 @@ void ws2812_set_pixel_brightness(uint8_t index, float brightness)
 	hsv_color_t hsv = rgb_to_hsv(ws2812_strip_dev->dev[index].color);
 	// 使用原始颜色的HSV，仅调整亮度（强制最大值以保持颜色）
 	hsv.v = brightness;
+	// hsv.s = ;
 	color_t rgb = hsv_to_rgb(hsv);
 	ws2812_set_pixel_color(index, rgb.r, rgb.g, rgb.b);
-	ws2812_show_leds();
+	// ws2812_show_leds();
 }
 void ws2812_set_all_pixels_color(uint8_t r, uint8_t g, uint8_t b, float brightness)
 {

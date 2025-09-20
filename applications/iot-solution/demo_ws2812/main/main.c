@@ -42,12 +42,16 @@ void main(void)
 {
     bl_sys_init(); // 初始化系统
     ws2812_init(&ws2812_strip);
-    blog_info("ws2812 demo start");
-    ws2812_set_all_pixels_color(0xFF, 0x00, 0x00, 0.5);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    ws2812_set_all_pixels_color(0x00, 0xFF, 0x00, 0.5);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    ws2812_set_all_pixels_color(0x00, 0x00, 0xFF, 0.5);
+    ws2812_set_pixel_color(0, 0xff, 0x00, 0x00);
+    ws2812_set_pixel_brightness(0, 0.5);
+    ws2812_show_leds();
+    dns_init();
+    // blog_info("ws2812 demo start");
+    // ws2812_set_all_pixels_color(0xFF, 0x00, 0x00, 0.5);
+    // vTaskDelay(pdMS_TO_TICKS(1000));
+    // ws2812_set_all_pixels_color(0x00, 0xFF, 0x00, 0.5);
+    // vTaskDelay(pdMS_TO_TICKS(1000));
+    // ws2812_set_all_pixels_color(0x00, 0x00, 0xFF, 0.5);
     vTaskDelay(pdMS_TO_TICKS(1000));
 
     while (1)

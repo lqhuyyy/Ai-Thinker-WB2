@@ -35,6 +35,13 @@ typedef enum
 	SEG_TIMER_MINUTE_TEN,
 	SEG_TIMER_MINUTE_UNIT,
 } seg_index_t;
+
+typedef enum
+{
+	SEG_LOADING_BLUFI_CONFIG = 0,
+	SEG_LOADING_WIFI_CONNECT,
+	SEG_LOADING_WIFI_DISCONNECT,
+} loading_t;
 /**
  * @brief 初始化数码管
  *
@@ -74,4 +81,21 @@ void seg_dispaly_humidity(int humidity, color_t color, float brightness);
  * @param brightness 亮度
  */
 void seg_display_time(int hour, int minute, color_t color, float brightness);
+/**
+ * @brief 炫彩显示时间
+ *
+ * @param hour
+ * @param minute
+ * @param color_mode
+ * @param brightness
+ */
+void seg_display_time_ex_color_mode(int hour, int minute, int color_mode, float brightness);
+/**
+ * @brief 显示加载状态
+ *
+ * @param status
+ */
+void seg_display_loading(loading_t status);
+
+void seg_time_dot_blink(bool enable, color_t color, float brightness);
 #endif // SEG_DEV_H

@@ -4,24 +4,40 @@
 #include <task.h>
 #include <bl_irq.h>
 #include <bl_sys.h>
-
+#include <easyflash.h>
+#include "device_state.h"
+#include "wifi_interface.h"
+#include <../wifi_mgmr.h>
 #include "seg_dev.h"
+#include "blog.h"
+
+#include "holoCoreSntp.h"
+#include <lwip/tcpip.h>
+#include <lwip/dns.h>
+#include <lwip/netdb.h>
+#include <lwip/sockets.h>
+#include <lwip/inet.h>
+
 color_t RED = {0xff, 0x00, 0x00};
-color_t GREEN = {0x00, 0xff, 0x00};
-color_t BLUE = {0x00, 0x00, 0xff};
+static ip4_addr_t dns_addr;
 
 void main(void)
 {
     bl_sys_init();  // 初始化系统
     seg_dev_init(); // 初始化数码管
-    seg_display_time(15, 13, GREEN, 0.1);
+    easyflash_init();
+    device_state_init(NULL);
+    tcpip_init(_startup_sntp, NULL);
+
+    // // 添加 DNS 加快网络连接速度
+    inet_aton("223.5.5.5", &dns_addr);
+    dns_init();
+    dns_setserver(0, &dns_addr);
+
     while (1)
     {
-        for (size_t i = 0; i <= 99; i++)
-        {
-            // 显示数字
-            seg_dispaly_tempture(i, BLUE, 0.05);
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
+        blog_debug("HeapSize=%d ", xPortGetFreeHeapSize());
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }

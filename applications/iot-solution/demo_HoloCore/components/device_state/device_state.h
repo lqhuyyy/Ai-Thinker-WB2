@@ -13,7 +13,7 @@
 #include <stdint.h>
 #include "wifi_code.h"
 #include "easy_flash.h"
-#include <../../../../../components/network/wifi_manager/bl60x_wifi_driver/wifi_mgmr.h>
+#include <../wifi_mgmr.h>
 #include "bl_sys.h"
 #include "blufi_config.h"
 #include "homeAssistantPort.h"
@@ -30,6 +30,7 @@ typedef enum
     DEVICE_STATE_WIFI_CONNECTED,
     DEVICE_STATE_WIFI_CONNECT_ERROR,
     DEVICE_STATE_WIFI_DISCONNECT,
+    DEVICE_STATE_WIFI_SCAN_FINISH,
     DEVICE_STATE_BLUFI_CONFIG,
     DEVICE_STATE_HOMEASSISTANT_CONNECT,
 } device_state_t;
