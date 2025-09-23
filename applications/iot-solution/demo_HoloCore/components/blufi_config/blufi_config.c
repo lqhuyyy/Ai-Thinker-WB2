@@ -266,10 +266,10 @@ static void example_event_callback(_blufi_cb_event_t event, _blufi_cb_param_t *p
         blog_info("Custom Data:%.*s", param->custom_data.data_len, param->custom_data.data);
         // echo
         axk_blufi_send_custom_data(param->custom_data.data, param->custom_data.data_len);
-        ha_mqtt_info_t mqtt_info;
-        mqtt_info.mqtt_host = get_ip_addr_from_custom_data("mqtt", (char *)param->custom_data.data);
-        mqtt_info.port = get_port_from_custom_data("mqtt", (char *)param->custom_data.data);
-        flash_save_mqtt_info(&mqtt_info);
+        // ha_mqtt_info_t mqtt_info;
+        // mqtt_info.mqtt_host = get_ip_addr_from_custom_data("mqtt", (char *)param->custom_data.data);
+        // mqtt_info.port = get_port_from_custom_data("mqtt", (char *)param->custom_data.data);
+        // flash_save_mqtt_info(&mqtt_info);
         break;
     case AXK_BLUFI_EVENT_RECV_USERNAME:
         /* Not handle currently */

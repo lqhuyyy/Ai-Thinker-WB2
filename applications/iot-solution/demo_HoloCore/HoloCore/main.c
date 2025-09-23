@@ -18,7 +18,6 @@
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
 
-color_t RED = {0xff, 0x00, 0x00};
 static ip4_addr_t dns_addr;
 
 void main(void)

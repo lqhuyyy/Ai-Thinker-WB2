@@ -20,11 +20,12 @@
 #include "seg_dev.h"
 #include "timers.h"
 #include "sntp.h"
-#include <utils_time.h>
 
+#include <utils_time.h>
+#include "bilibili_follower.h"
 color_t GREEN = {0x00, 0xff, 0x00};
 color_t BLUE = {0x00, 0x00, 0xff};
-static homeAssisatnt_device_t ha_dev;
+
 static QueueHandle_t device_queue_handle;
 static TimerHandle_t device_state_timer_handle = NULL;
 static TimerHandle_t SNTP_gernerate_timer_handle = NULL;
@@ -45,15 +46,6 @@ static void device_state_task(void *arg)
             {
                 blog_info("<<<<<<<<<<<<<<<  DEVICE_SATE_SYSYTEM_INIT");
                 seg_display_loading(SEG_LOADING_BLUFI_CONFIG);
-
-                // 读取HA MQTT信息
-                if (flash_get_mqtt_info(&ha_dev.mqtt_info))
-                {
-                    if (flash_get_ha_device_msg(&ha_dev))
-                    {
-                        device_homeAssistant_init(&ha_dev);
-                    }
-                }
             }
             break;
             case DEVICE_STATE_WIFI_SCAN_FINISH:
@@ -89,7 +81,11 @@ static void device_state_task(void *arg)
                 blog_info("ssid =%s,password=%s addr=%s", dev_msg->wifi_info.ssid, dev_msg->wifi_info.password, dev_msg->wifi_info.ipv4_addr);
                 seg_display_loading(SEG_LOADING_WIFI_CONNECT);
                 // 启动HA 连接
-                homeAssistant_device_start();
+                // homeAssistant_device_start();
+                // 获取bilibili 粉丝数
+                // bilibili_get_fans_count();
+                xTimerStart(SNTP_gernerate_timer_handle, pdMS_TO_TICKS(100));
+
                 flash_save_reset_count(0);
                 // 如果连接信息保存的不一致，则重新保存
                 wifi_info_t flash_wifi_info = {0};
@@ -101,7 +97,9 @@ static void device_state_task(void *arg)
                     flash_save_wifi_info(&dev_msg->wifi_info);
                 }
                 vTaskDelay(pdMS_TO_TICKS(100));
-                xTimerStart(SNTP_gernerate_timer_handle, pdMS_TO_TICKS(100));
+                
+                blog_info("htpps get:%d", bilibili_get_fans_count("355202584"));
+                seg_display_fans_count_color_mode(bilibili_get_fans_count("355202584"), 0, 0.05);
             }
             break;
 
@@ -152,7 +150,7 @@ static void device_state_timer_callback(TimerHandle_t xTimer)
                   date.day_of_year);
 
         // seg_display_time((int)date.ntp_hour, (int)date.ntp_minute, BLUE, 0.2);
-        seg_display_time_ex_color_mode((int)date.ntp_hour, (int)date.ntp_minute, 0, 0.2);
+        // seg_display_time_ex_color_mode((int)date.ntp_hour, (int)date.ntp_minute, 0, 0.05);
     }
 }
 

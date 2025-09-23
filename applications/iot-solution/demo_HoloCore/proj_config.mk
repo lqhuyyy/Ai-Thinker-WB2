@@ -64,6 +64,7 @@ CONFIG_MBEDTLS_BIGNUM_USE_HW:=1
 CONFIG_MBEDTLS_ECC_USE_HW:=1
 CONFIG_MBEDTLS_SHA1_USE_HW:=1
 CONFIG_MBEDTLS_SHA256_USE_HW:=1
+
 CONFIG_WS2812_MODE:=SPI_MODE
 #blog enable components format :=blog_testc cli vfs helper
 # LOG_ENABLED_COMPONENTS:=blog_testc hosal loopset looprt bloop http_client_tcp

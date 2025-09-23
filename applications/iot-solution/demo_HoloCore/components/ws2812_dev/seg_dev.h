@@ -13,7 +13,10 @@
 #include <stdint.h>
 #include "ws2812.h"
 #include "stdbool.h"
-
+#define SEG_WIFI_LED_NUNBER 60
+#define SEG_FANS_W_LED_NUMBER 59
+#define SEG_BAT_LED_NUMBER 61
+#define SEG_NMBLE_DOT_LED_NUMBLE 58
 typedef enum
 {
 	SEG_A = 0,
@@ -42,6 +45,7 @@ typedef enum
 	SEG_LOADING_WIFI_CONNECT,
 	SEG_LOADING_WIFI_DISCONNECT,
 } loading_t;
+
 /**
  * @brief 初始化数码管
  *
@@ -56,22 +60,6 @@ void seg_dev_init(void);
  * @param brightness 亮度
  */
 void seg_dispaly_number(seg_index_t seg_index, int digit, color_t color, float brightness);
-/**
- * @brief 显示温度
- *
- * @param temperature 温度值
- * @param color 颜色
- * @param brightness 亮度
- */
-void seg_dispaly_tempture(int temperature, color_t color, float brightness);
-/**
- * @brief 显示湿度
- *
- * @param humidity 湿度值
- * @param color 颜色
- * @param brightness 亮度
- */
-void seg_dispaly_humidity(int humidity, color_t color, float brightness);
 /**
  * @brief 显示时间
  *
@@ -91,10 +79,20 @@ void seg_display_time(int hour, int minute, color_t color, float brightness);
  */
 void seg_display_time_ex_color_mode(int hour, int minute, int color_mode, float brightness);
 /**
+ * @brief 显示粉丝数
+ *
+ * @param hour
+ * @param minute
+ * @param color_mode
+ * @param brightness
+ */
+void seg_display_fans_count_color_mode(int follow_cnt, int color_mode, float brightness);
+/**
  * @brief 显示加载状态
  *
  * @param status
  */
+
 void seg_display_loading(loading_t status);
 
 void seg_time_dot_blink(bool enable, color_t color, float brightness);

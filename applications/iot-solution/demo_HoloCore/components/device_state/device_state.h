@@ -16,8 +16,6 @@
 #include <../wifi_mgmr.h>
 #include "bl_sys.h"
 #include "blufi_config.h"
-#include "homeAssistantPort.h"
-#include "dev_ha.h"
 
 #define DEVICE_HW_SERSION "V1.0.0"
 
@@ -40,7 +38,6 @@ typedef struct device_state_handle
     device_state_t device_state;
     wifi_info_t wifi_info;
     int ac_type;
-    homeAssisatnt_device_t *ha_dev;
 } dev_msg_t;
 
 void device_state_init(void *arg);

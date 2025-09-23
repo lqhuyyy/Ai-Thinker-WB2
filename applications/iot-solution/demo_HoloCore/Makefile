@@ -45,7 +45,7 @@ COMPONENTS_BLE     := $(COMPONENTS_BLECONTROLLER) blestack
 endif
 
 INCLUDE_COMPONENTS += freertos_riscv_ram newlibc bl602 bl602_std newlibc wifi blcrypto_suite wifi_manager wpa_supplicant bl602_os_adapter wifi_hosal hosal lwip lwip_dhcpd mbedtls_lts vfs yloop utils cli httpc netutils bl_os_adapter  blog blog_testc
-INCLUDE_COMPONENTS += easyflash4 lwip_altcp_tls_mbedtls coredump
+INCLUDE_COMPONENTS += easyflash4 lwip_altcp_tls_mbedtls coredump cli
 INCLUDE_COMPONENTS += $(COMPONENTS_NETWORK)
 INCLUDE_COMPONENTS += $(COMPONENTS_BLSYS)
 INCLUDE_COMPONENTS += $(COMPONENTS_VFS)
@@ -80,7 +80,7 @@ endif
 ifeq ($(CONFIG_BLECONTROLLER_LIB),all)
 LDFLAGS := $(filter-out $(addprefix -l$(BLECONTROLLER_LIB_PREFIX), $(filter-out $(BLECONTROLLER_LIB_DEFAULT), $(BLECONTROLLER_LIBS))), $(LDFLAGS))
 endif
-INCLUDE_COMPONENTS += HomeAssistant-C components
+INCLUDE_COMPONENTS +=  components
 EXTRA_COMPONENT_DIRS += $(PROJECT_PATH)
 
 include $(BL60X_SDK_PATH)/make_scripts_riscv/project.mk

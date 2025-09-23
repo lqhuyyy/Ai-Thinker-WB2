@@ -28,6 +28,8 @@ typedef enum
     FLASH_HA_AC_TYPE,
     FLASH_HA_AC_GCODE,
     FLASH_HA_RESET_NUM,
+    FLASH_BILIBILI_USER_ID,
+    FLASH_BILIBILI_FOLLOWER_COUNT,
 } flash_key_t;
 
 bool flash_save_wifi_info(void *value);
