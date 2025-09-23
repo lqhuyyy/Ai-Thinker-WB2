@@ -38,6 +38,7 @@ typedef struct device_state_handle
     device_state_t device_state;
     wifi_info_t wifi_info;
     int ac_type;
+    
 } dev_msg_t;
 
 void device_state_init(void *arg);

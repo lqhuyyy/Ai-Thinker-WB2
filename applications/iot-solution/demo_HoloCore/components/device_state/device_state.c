@@ -97,7 +97,6 @@ static void device_state_task(void *arg)
                     flash_save_wifi_info(&dev_msg->wifi_info);
                 }
                 vTaskDelay(pdMS_TO_TICKS(100));
-                
                 blog_info("htpps get:%d", bilibili_get_fans_count("355202584"));
                 seg_display_fans_count_color_mode(bilibili_get_fans_count("355202584"), 0, 0.05);
             }
@@ -108,11 +107,6 @@ static void device_state_task(void *arg)
                 seg_display_loading(SEG_LOADING_BLUFI_CONFIG);
                 blufi_config_start();
                 break;
-
-            case DEVICE_STATE_HOMEASSISTANT_CONNECT:
-                blog_info("<<<<<<<<<<<<<<< DEVICE_STATE_HOMEASSISTANT_CONNECT");
-                break;
-
             default:
                 break;
             }
