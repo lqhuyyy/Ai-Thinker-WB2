@@ -17,7 +17,7 @@
 #include <lwip/netdb.h>
 #include <lwip/sockets.h>
 #include <lwip/inet.h>
-
+#include "key_read.h"
 static ip4_addr_t dns_addr;
 
 void main(void)
@@ -27,7 +27,7 @@ void main(void)
     easyflash_init();
     device_state_init(NULL);
     tcpip_init(_startup_sntp, NULL);
-
+    button_init();
     // // 添加 DNS 加快网络连接速度
     inet_aton("223.5.5.5", &dns_addr);
     dns_init();

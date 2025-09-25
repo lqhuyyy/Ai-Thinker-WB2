@@ -31,6 +31,10 @@ typedef enum
     DEVICE_STATE_WIFI_SCAN_FINISH,
     DEVICE_STATE_BLUFI_CONFIG,
     DEVICE_STATE_HOMEASSISTANT_CONNECT,
+    DEVIDE_STATE_CFG_STATE_SHORT_PRESS,
+    DEVICE_STATE_CFG_STATE_LONG_PRESS,
+    DEVICE_STATE_CFG_STATE_DOUBLE_CLICK,
+    DEVICE_STATE_HTTP_REQUEST,
 } device_state_t;
 
 typedef struct device_state_handle
@@ -38,7 +42,6 @@ typedef struct device_state_handle
     device_state_t device_state;
     wifi_info_t wifi_info;
     int ac_type;
-    
 } dev_msg_t;
 
 void device_state_init(void *arg);

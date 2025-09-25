@@ -361,6 +361,10 @@ void seg_display_fans_count_color_mode(int follow_cnt, int color_mode, float bri
 	}
 	// 计算需要显示的数字
 	// 设置小时的十位
+	// 关闭冒号灯珠
+	ws2812_set_pixel_brightness(seg_dev.seg_time.seg_units[0], 0);
+	ws2812_set_pixel_brightness(seg_dev.seg_time.seg_units[1], 0);
+	// 如果大于9999则显示为9999
 	if (follow_cnt > 0 && follow_cnt < 9999)
 	{
 		istenthousand = false;

@@ -148,3 +148,39 @@ int flash_get_reset_count(void)
     vPortFree(count);
     return reset_count;
 }
+
+int flash_save_follower_count(int count)
+{
+    char *count_str = pvPortMalloc(10);
+    memset(count_str, 0, 10);
+    sprintf(count_str, "%d", count);
+    bool ret = ef_set_bytes(flash_key[FLASH_BILIBILI_FOLLOWER_COUNT], count_str, strlen(count_str));
+    vPortFree(count_str);
+    return ret;
+}
+int flash_get_follower_count(void)
+{
+    char *count = pvPortMalloc(10);
+    int follower_count = 0;
+    memset(count, 0, 10);
+    ef_get_bytes(flash_key[FLASH_BILIBILI_FOLLOWER_COUNT], count, 10);
+    printf("follower count =%s\n", count);
+    if ((count[0] >= '0' && count[0] <= '9'))
+    {
+        follower_count = atoi(count);
+    }
+    else
+        follower_count = 0;
+    vPortFree(count);
+    return follower_count;
+}
+int flash_save_bilibili_uid(char *uid)
+{
+
+    return ef_set_bytes(flash_key[FLASH_BILIBILI_USER_ID], uid, strlen(uid));
+}
+int flash_get_bilibili_uid(char *uidbuff)
+{
+    memset(uidbuff, 0, 32);
+    return ef_get_bytes(flash_key[FLASH_BILIBILI_USER_ID], uidbuff, 32);
+}

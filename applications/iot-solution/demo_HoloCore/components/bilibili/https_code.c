@@ -26,6 +26,7 @@
 #include "mbedtls/debug.h"
 #include <blog.h>
 #include "https_code.h"
+#define HTTP_RESPONSE_BUFFER_SIZE 4096 // 根据实际需求调整
 /* Constants that aren't configurable in menuconfig */
 #define WEB_SERVER "api.bilibili.com"
 #define WEB_PORT "443"
@@ -36,7 +37,6 @@ static const char *REQUEST = "GET " WEB_URL " HTTP/1.1\r\n"
 							 "User-Agent: Ai-WB2 HoloCore \r\n"
 							 "\r\n";
 
-static char http_data[512];
 static const uint8_t TEST_CERTIFICATE_FILENAME[] = {"-----BEGIN CERTIFICATE-----\r\n"
 													"MIIEkjCCA3qgAwIBAgIQCgFBQgAAAVOFc2oLheynCDANBgkqhkiG9w0BAQsFADA/\r\n"
 													"MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT\r\n"
@@ -67,29 +67,71 @@ static const uint8_t TEST_CERTIFICATE_FILENAME[] = {"-----BEGIN CERTIFICATE-----
 static const char *extract_json_from_http_response(const char *response);
 char *https_get_code(char *user_id)
 {
+	if (user_id == NULL)
+	{
+		blog_error("user_id is NULL");
+		return NULL;
+	}
 
-	int ret, flags, len;
+	int ret = 0, flags, len;
 	char buf[1024] = {0};
+	const char *json_data = NULL;
+	char *http_data = NULL;
+	// 初始化上下文结构 - 按释放顺序的逆序初始化
 	mbedtls_entropy_context entropy;
 	mbedtls_ctr_drbg_context ctr_drbg;
-	mbedtls_ssl_context ssl;
 	mbedtls_x509_crt cacert;
 	mbedtls_ssl_config conf;
 	mbedtls_net_context server_fd;
+	mbedtls_ssl_context ssl;
+	mbedtls_ssl_session session; // 24字节泄漏的核心对象
+
+	// 初始化所有资源时立即设置清理标记
+	int session_inited = 0;
+	int ssl_inited = 0;
+	int cacert_inited = 0;
+	int ctr_drbg_inited = 0;
+	int conf_inited = 0;
+	int entropy_inited = 0;
+	int server_fd_inited = 0;
+
+	// 会话初始化 - 增加状态标记
+	mbedtls_ssl_session_init(&session);
+	session_inited = 1;
 
 	mbedtls_ssl_init(&ssl);
+
+	ssl_inited = 1;
+
 	mbedtls_x509_crt_init(&cacert);
+	cacert_inited = 1;
+
 	mbedtls_ctr_drbg_init(&ctr_drbg);
-	blog_info("Seeding the random number generator");
+
+	ctr_drbg_inited = 1;
 
 	mbedtls_ssl_config_init(&conf);
 
+	conf_inited = 1;
+
 	mbedtls_entropy_init(&entropy);
+
+	entropy_inited = 1;
+
+	mbedtls_net_init(&server_fd);
+
+	server_fd_inited = 1;
+
+	// 会话获取逻辑 - 移至ssl配置之后（原位置过早）
+	blog_info("Checking for existing SSL session...");
+
+	blog_info("Seeding the random number generator");
 	if ((ret = mbedtls_ctr_drbg_seed(&ctr_drbg, mbedtls_entropy_func, &entropy,
 									 NULL, 0)) != 0)
 	{
 		blog_error("mbedtls_ctr_drbg_seed returned %d", ret);
-		abort();
+		ret = -1;
+		goto exit;
 	}
 
 	blog_info("Loading the CA root certificate...");
@@ -100,20 +142,19 @@ char *https_get_code(char *user_id)
 	if (ret < 0)
 	{
 		blog_error("mbedtls_x509_crt_parse returned -0x%x\n\n", -ret);
-		abort();
+		ret = -1;
+		goto exit;
 	}
 
 	blog_info("Setting hostname for TLS session...");
-
-	/* Hostname set here should match CN in server certificate */
 	if ((ret = mbedtls_ssl_set_hostname(&ssl, WEB_SERVER)) != 0)
 	{
 		blog_error("mbedtls_ssl_set_hostname returned -0x%x", -ret);
-		abort();
+		ret = -1;
+		goto exit;
 	}
 
 	blog_info("Setting up the SSL/TLS structure...");
-
 	if ((ret = mbedtls_ssl_config_defaults(&conf,
 										   MBEDTLS_SSL_IS_CLIENT,
 										   MBEDTLS_SSL_TRANSPORT_STREAM,
@@ -122,14 +163,7 @@ char *https_get_code(char *user_id)
 		blog_error("mbedtls_ssl_config_defaults returned %d", ret);
 		goto exit;
 	}
-
-	/* MBEDTLS_SSL_VERIFY_OPTIONAL is bad for security, in this example it will print
-	   a warning if CA verification fails but it will continue to connect.
-
-	   You should consider using MBEDTLS_SSL_VERIFY_REQUIRED in your own code.
-	*/
-	// mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_OPTIONAL);
-	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE); // 跳过证书验证
+	mbedtls_ssl_conf_authmode(&conf, MBEDTLS_SSL_VERIFY_NONE);
 	mbedtls_ssl_conf_ca_chain(&conf, &cacert, NULL);
 	mbedtls_ssl_conf_rng(&conf, mbedtls_ctr_drbg_random, &ctr_drbg);
 
@@ -138,10 +172,19 @@ char *https_get_code(char *user_id)
 		blog_error("mbedtls_ssl_setup returned -0x%x\n\n", -ret);
 		goto exit;
 	}
-	mbedtls_net_init(&server_fd);
+
+	// 此时ssl已初始化完成，再尝试获取会话
+	ret = mbedtls_ssl_get_session(&ssl, &session);
+	if (ret == 0)
+	{
+		blog_info("Session acquired");
+	}
+	else
+	{
+		blog_info("No existing session");
+	}
 
 	blog_info("Connecting to %s:%s...", WEB_SERVER, WEB_PORT);
-
 	if ((ret = mbedtls_net_connect(&server_fd, WEB_SERVER,
 								   WEB_PORT, MBEDTLS_NET_PROTO_TCP)) != 0)
 	{
@@ -150,11 +193,9 @@ char *https_get_code(char *user_id)
 	}
 
 	blog_info("Connected.");
-
 	mbedtls_ssl_set_bio(&ssl, &server_fd, mbedtls_net_send, mbedtls_net_recv, NULL);
 
 	blog_info("Performing the SSL/TLS handshake...");
-
 	while ((ret = mbedtls_ssl_handshake(&ssl)) != 0)
 	{
 		if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
@@ -164,11 +205,10 @@ char *https_get_code(char *user_id)
 		}
 	}
 
+	// 其余代码保持不变...
 	blog_info("Verifying peer X.509 certificate...");
-
 	if ((flags = mbedtls_ssl_get_verify_result(&ssl)) != 0)
 	{
-		/* In real life, we probably want to close connection if ret != 0 */
 		blog_warn("Failed to verify peer certificate!");
 		bzero(buf, sizeof(buf));
 		mbedtls_x509_crt_verify_info(buf, sizeof(buf), "  ! ", flags);
@@ -182,8 +222,9 @@ char *https_get_code(char *user_id)
 	blog_info("Cipher suite is %s", mbedtls_ssl_get_ciphersuite(&ssl));
 
 	blog_info("Writing HTTP request...");
-	char request_buf[256];
-	sprintf(request_buf, REQUEST, user_id);
+	char request_buf[512];
+	memset(request_buf, 0, 512);
+	snprintf(request_buf, sizeof(request_buf), REQUEST, user_id);
 	blog_info("Request:\n%s", request_buf);
 	size_t written_bytes = 0;
 	do
@@ -204,7 +245,16 @@ char *https_get_code(char *user_id)
 	} while (written_bytes < strlen(request_buf));
 
 	blog_info("Reading HTTP response...");
-
+	char *http_response = malloc(HTTP_RESPONSE_BUFFER_SIZE);
+	if (!http_response)
+	{
+		blog_error("Failed to allocate memory for http_response");
+		ret = -1;
+		goto exit;
+	}
+	http_response[0] = '\0'; // 初始化空字符串
+	int json_extracted = 0;	 // 标记JSON是否已提取
+							 // 第一阶段：读取完整的HTTP响应
 	do
 	{
 		len = sizeof(buf) - 1;
@@ -229,51 +279,108 @@ char *https_get_code(char *user_id)
 			blog_info("connection closed");
 			break;
 		}
-		len = ret;
-		strcpy(http_data, extract_json_from_http_response(buf));
+
+		// 追加数据到完整响应缓冲区
+		size_t current_len = strlen(http_response);
+		if (current_len + ret < HTTP_RESPONSE_BUFFER_SIZE - 1)
+		{
+			memcpy(http_response + current_len, buf, ret);
+			http_response[current_len + ret] = '\0';
+		}
+		else
+		{
+			blog_error("HTTP response too large, buffer overflow prevented");
+			ret = -1;
+			goto exit;
+		}
 	} while (1);
 
-	mbedtls_ssl_close_notify(&ssl);
-exit:
-	mbedtls_ssl_session_reset(&ssl);
-	mbedtls_net_free(&server_fd);
+	// 第二阶段：提取JSON（仅在成功读取响应后）
+	if (ret == 0)
+	{
+		const char *json_start = extract_json_from_http_response(http_response);
+		if (json_start)
+		{
+			size_t json_len = strlen(json_start);
+			http_data = malloc(json_len + 1);
+			if (http_data)
+			{
+				memcpy(http_data, json_start, json_len);
+				http_data[json_len] = '\0';
+				json_extracted = 1; // 标记JSON提取成功
+			}
+			else
+			{
+				blog_error("Failed to allocate memory for http_data");
+				ret = -1;
+			}
+		}
+		else
+		{
+			blog_error("Failed to extract JSON from complete response");
+			ret = -1;
+		}
+	}
 
+	// 释放临时缓冲区（无论是否成功都释放）
+	free(http_response);
+	http_response = NULL;
+exit:
+	// 关键修复：按初始化的逆序释放资源，只释放已初始化的部分
+	if (server_fd_inited)
+		mbedtls_net_free(&server_fd);
+	if (ssl_inited)
+	{
+		mbedtls_ssl_close_notify(&ssl);
+		mbedtls_ssl_session_reset(&ssl);
+		mbedtls_ssl_free(&ssl);
+	}
+	if (conf_inited)
+		mbedtls_ssl_config_free(&conf);
+	if (cacert_inited)
+		mbedtls_x509_crt_free(&cacert);
+	if (ctr_drbg_inited)
+		mbedtls_ctr_drbg_free(&ctr_drbg);
+	if (entropy_inited)
+		mbedtls_entropy_free(&entropy);
+	// 最后释放session，确保前面的资源释放不会影响它
+	if (session_inited)
+	{
+		mbedtls_ssl_session_free(&session);
+		memset(&session, 0, sizeof(mbedtls_ssl_session));
+	}
+
+	// 仅在出错时释放已分配的http_data
+	if (ret != 0 && http_data != NULL)
+	{
+		free(http_data);
+		http_data = NULL;
+	}
 	if (ret != 0)
 	{
-		mbedtls_strerror(ret, buf, 100);
+		mbedtls_strerror(ret, buf, sizeof(buf) - 1);
 		blog_error("Last error was: -0x%x - %s", -ret, buf);
 	}
 	static int request_count;
 	blog_info("Completed %d requests", ++request_count);
-	len = strlen(http_data);
-	if (len > 0)
-		return http_data;
-	return NULL;
+	return http_data;
 }
 
 static const char *extract_json_from_http_response(const char *response)
 {
-	// 查找响应头和响应体的分隔符：两个连续的换行符
-	const char *separator = "\n\n";
+	const char *separator = "\r\n\r\n";
 	const char *json_start = strstr(response, separator);
 
 	if (json_start == NULL)
 	{
-		// 如果找不到"\n\n"，尝试查找"\r\n\r\n"（标准HTTP分隔符）
-		separator = "\r\n\r\n";
+		separator = "\n\n";
 		json_start = strstr(response, separator);
 		if (json_start == NULL)
 		{
-			return NULL; // 未找到分隔符
+			return NULL;
 		}
-		// 跳过分隔符
-		json_start += strlen(separator);
-	}
-	else
-	{
-		// 跳过分隔符
-		json_start += strlen(separator);
 	}
 
+	json_start += strlen(separator);
 	return json_start;
 }

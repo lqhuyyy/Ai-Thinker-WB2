@@ -23,19 +23,23 @@
 
 #include <utils_time.h>
 #include "bilibili_follower.h"
+
 color_t GREEN = {0x00, 0xff, 0x00};
 color_t BLUE = {0x00, 0x00, 0xff};
 
 static QueueHandle_t device_queue_handle;
 static TimerHandle_t device_state_timer_handle = NULL;
 static TimerHandle_t SNTP_gernerate_timer_handle = NULL;
+static TimerHandle_t fans_count_timer_handle = NULL;
 static bool is_blufi_config = false;
+static bool seg_is_timer_running = true;
 static void device_state_task(void *arg)
 {
     dev_msg_t *dev_msg = pvPortMalloc(sizeof(dev_msg_t));
     int ac_type = 0;
     BaseType_t type = pdFALSE;
     int i = 0;
+
     while (1)
     {
         if (xQueueReceive(device_queue_handle, dev_msg, pdMS_TO_TICKS(1000) == pdTRUE))
@@ -66,6 +70,7 @@ static void device_state_task(void *arg)
                             dev_msg->wifi_info.band = 0;
                             dev_msg->wifi_info.chan_id = 4212 + wifiMgmr.scan_items[i].channel * 5;
                             quick_connect_wifi(&dev_msg->wifi_info);
+
                             // 退出循环
                             goto __EXIT;
                         }
@@ -80,10 +85,7 @@ static void device_state_task(void *arg)
                 // 读取连的AP信息
                 blog_info("ssid =%s,password=%s addr=%s", dev_msg->wifi_info.ssid, dev_msg->wifi_info.password, dev_msg->wifi_info.ipv4_addr);
                 seg_display_loading(SEG_LOADING_WIFI_CONNECT);
-                // 启动HA 连接
-                // homeAssistant_device_start();
-                // 获取bilibili 粉丝数
-                // bilibili_get_fans_count();
+
                 xTimerStart(SNTP_gernerate_timer_handle, pdMS_TO_TICKS(100));
 
                 flash_save_reset_count(0);
@@ -97,8 +99,6 @@ static void device_state_task(void *arg)
                     flash_save_wifi_info(&dev_msg->wifi_info);
                 }
                 vTaskDelay(pdMS_TO_TICKS(100));
-                blog_info("htpps get:%d", bilibili_get_fans_count("355202584"));
-                seg_display_fans_count_color_mode(bilibili_get_fans_count("355202584"), 0, 0.05);
             }
             break;
 
@@ -109,7 +109,62 @@ static void device_state_task(void *arg)
                 break;
             default:
                 break;
+            case DEVIDE_STATE_CFG_STATE_SHORT_PRESS:
+                blog_info("<<<<<<<<<<<<<<<  DEVIDE_STATE_CFG_STATE_SHORT_PRESS");
+                // 切换显示
+                if (seg_is_timer_running == false)
+                {
+                    if (xTimerIsTimerActive(SNTP_gernerate_timer_handle) == pdFALSE)
+                        xTimerStart(SNTP_gernerate_timer_handle, pdMS_TO_TICKS(100));
+                    if (xTimerIsTimerActive(fans_count_timer_handle) == pdTRUE)
+                        xTimerStop(fans_count_timer_handle, pdMS_TO_TICKS(100));
+                    seg_is_timer_running = true;
+                }
+                else
+                {
+                    // ws2812_set_all_pixels_color(0, 0, 0, 0);
+                    seg_is_timer_running = false;
+                    // 判断timer 是否在运行
+                    if (xTimerIsTimerActive(SNTP_gernerate_timer_handle) == pdTRUE)
+                        xTimerStop(SNTP_gernerate_timer_handle, pdMS_TO_TICKS(100));
+                    int fans_count = flash_get_follower_count();
+                    if (fans_count == 0)
+                    {
+                        /* code */
+                        fans_count = bilibili_get_fans_count("355202584");
+                        flash_save_follower_count(fans_count);
+                    }
+                    seg_display_fans_count_color_mode(fans_count, 0, 0.05);
+                    // 判断 timer 是否在运行
+                    if (xTimerIsTimerActive(fans_count_timer_handle) == pdFALSE)
+                        xTimerStart(fans_count_timer_handle, pdMS_TO_TICKS(100));
+                }
+                break;
+            case DEVICE_STATE_CFG_STATE_LONG_PRESS:
+                blog_info("<<<<<<<<<<<<<<<  DEVICE_STATE_CFG_STATE_LONG_PRESS");
+                // 进入配网模式
+                blufi_config_start();
+                break;
+            case DEVICE_STATE_CFG_STATE_DOUBLE_CLICK:
+                blog_info("<<<<<<<<<<<<<<<  DEVICE_STATE_CFG_STATE_DOUBLE_CLICK");
+                break;
+            case DEVICE_STATE_HTTP_REQUEST:
+                blog_info("<<<<<<<<<<<<<<<  DEVICE_STATE_HTTP_REQUEST");
+
+                int fans_count = bilibili_get_fans_count("355202584");
+
+                if (fans_count != -1)
+                {
+                    int fans_count_flash = flash_get_follower_count();
+                    if (fans_count_flash != fans_count)
+                    {
+                        flash_save_follower_count(fans_count);
+                        seg_display_fans_count_color_mode(fans_count, 0, 0.05);
+                    }
+                }
+                break;
             }
+
             memset(dev_msg, 0, sizeof(dev_msg_t));
         }
         i++;
@@ -122,6 +177,7 @@ static void device_state_task(void *arg)
 static void device_state_timer_callback(TimerHandle_t xTimer)
 {
     int ret = pvTimerGetTimerID(xTimer);
+
     if (ret == 0)
     {
         flash_save_reset_count(0);
@@ -144,14 +200,20 @@ static void device_state_timer_callback(TimerHandle_t xTimer)
                   date.day_of_year);
 
         // seg_display_time((int)date.ntp_hour, (int)date.ntp_minute, BLUE, 0.2);
-        // seg_display_time_ex_color_mode((int)date.ntp_hour, (int)date.ntp_minute, 0, 0.05);
+        seg_display_time_ex_color_mode((int)date.ntp_hour, (int)date.ntp_minute, 0, 0.05);
+    }
+    else if (ret == 2)
+    {
+        dev_msg_t dev_msg = {0};
+        dev_msg.device_state = DEVICE_STATE_HTTP_REQUEST;
+        device_state_update(false, &dev_msg);
     }
 }
 
 void device_state_init(void *arg)
 {
     device_queue_handle = xQueueCreate(2, sizeof(dev_msg_t));
-    BaseType_t err = xTaskCreate(device_state_task, "device_state_task", DEVICE_QUEUE_HANDLE_SIZE * 2, NULL, 9, NULL);
+    BaseType_t err = xTaskCreate(device_state_task, "device_state_task", DEVICE_QUEUE_HANDLE_SIZE * 8, NULL, 9, NULL);
 
     wifi_device_init(blufi_wifi_event);
     // blufi_wifi_init();
@@ -172,6 +234,7 @@ void device_state_init(void *arg)
     device_state_timer_handle = xTimerCreate("device_state_timer", pdMS_TO_TICKS(5000), pdFALSE, (void *)0, device_state_timer_callback);
     SNTP_gernerate_timer_handle = xTimerCreate("SNTP_gernerate_timer", pdMS_TO_TICKS(1000), pdTRUE, (void *)1, device_state_timer_callback);
 
+    fans_count_timer_handle = xTimerCreate("fans_count_timer", pdMS_TO_TICKS(10000), pdTRUE, (void *)2, device_state_timer_callback);
     xTimerStart(device_state_timer_handle, pdMS_TO_TICKS(100));
     if (reset_count >= 3 || reset_count == -1)
     {
